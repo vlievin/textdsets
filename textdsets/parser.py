@@ -1,6 +1,7 @@
 from collections import Counter
 from enum import Enum
 from itertools import chain
+from functools import partial
 from typing import *
 
 from .utils import Token
@@ -47,9 +48,19 @@ def build_vocabulary_from_tokens(tokens: List[str], max: Optional[int] = None) -
     return [t[0] for t in chain(base_tokens, tokens_count)]
 
 
-def encode_tokens(tokens: List[str], vocabulary: List[str]) -> List[int]:
+def encode_token(vocabulary, token):
+    return vocabulary.get(token, Token.UNK.value)
+
+def encode_tokens(tokens: List[str], vocabulary: List[str], parallel: bool = True) -> List[int]:
     vocabulary = {v: k for k, v in enumerate(vocabulary)}
-    return [vocabulary.get(t, Token.UNK.value) for t in tokens]
+    pencode = partial(encode_token, vocabulary)
+
+    if not parallel:
+        return list(map(pencode, tokens))
+    else:
+        from multiprocessing import Pool, cpu_count
+        pool = Pool(cpu_count())
+        return list(pool.map(pencode, tokens))
 
 
 def decode_tokens(tokens: List[str], vocabulary: List[str]) -> List[int]:

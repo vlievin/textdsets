@@ -7,9 +7,9 @@ import zipfile
 from .parser import tokenize_words
 
 URL = 'http://mattmahoney.net/dc/text8.zip'
-TRAIN_SIZE = 99000000
+SPLITS_RATIOS = (0.9, 0.05, 0.05)
 FILENAME = 'text8.zip'
-DIRECTORY = 'data/text8/'
+DIRECTORY = 'text8/'
 
 
 def read_and_download_text8_data(root: str = 'data/') -> str:

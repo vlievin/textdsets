@@ -13,6 +13,7 @@ from .text8 import read_and_download_text8_data
 class DatasetType(Enum):
     TEXT8 = "text8"
 
+
 BASE_ARGS_EXCEPTIONS = ['self', 'root']
 
 
@@ -25,17 +26,27 @@ def get_hash_from_args(args: Dict, exceptions=None):
 
 
 class ChunckTextDataset(Dataset):
-    filename = "dataset.tar"
+
+    @property
+    def filename(self):
+        return f"dataset-{self.id}.tar"
 
     def __init__(self,
                  dataset_type: DatasetType,
                  root: str = 'data/',
-                 split_type: TokenType = TokenType.WORD,
+                 token_type: TokenType = TokenType.CHAR,
                  vocabulary_size: Optional[int] = None,
-                 sentence_length: int = 40):
+                 sentence_length: int = 180):
+
         self.root = root
+        self.token_type = token_type
         self.dataset_type = dataset_type
         self.id = f"{dataset_type.value}-{get_hash_from_args(locals())}"
+
+        self.space_char = {TokenType.CHAR: "",
+                           TokenType.WORD: " ",
+                           TokenType.SUB: ""
+                           }[self.token_type]
 
         if not self.restore_if_available():
             # choose the dataset downloader and reader
@@ -44,22 +55,26 @@ class ChunckTextDataset(Dataset):
             }[dataset_type]
 
             # read the raw text dump
+            print("(Download and) read the data..")
             raw_text = read_and_download_data(root=root)
 
             # extract tokens
-            tokens = Tokenizer(split_type)(raw_text)
+            print("Tokenizing..")
+            tokens = Tokenizer(token_type)(raw_text)
 
             # build vocabulary
+            print("Building vocabulary..")
             self.vocabulary = build_vocabulary_from_tokens(tokens, max=vocabulary_size)
 
             # encode tokens
-            tokens = encode_tokens(tokens, self.vocabulary)
+            print("Encode tokens..")
+            encoded_tokens = encode_tokens(tokens, self.vocabulary)
 
             # drop the last split
-            tokens = tokens[:sentence_length * (len(tokens) // sentence_length)]
+            encoded_tokens = encoded_tokens[:sentence_length * (len(encoded_tokens) // sentence_length)]
 
             # build an array where each row corresponds to a `split`
-            self.data = np.array(tokens).reshape(-1, sentence_length)
+            self.data = np.array(encoded_tokens).reshape(-1, sentence_length)
 
             # save data to file for fast loading
             self.save()
@@ -76,10 +91,14 @@ class ChunckTextDataset(Dataset):
         }
 
     def __getitem__(self, item):
-        return self.data[item]
+        x = self.data[item]
+        return torch.tensor(x)
 
     def __len__(self):
         return self.data.shape[0]
+
+    def decode_tokens(self, tokens: List[int]):
+        return self.space_char.join([self.vocabulary[t] for t in tokens])
 
     @property
     def path(self):
@@ -118,7 +137,9 @@ class SubsetDataset():
         return f"`{self.label}` {type(self).__name__} dataset with Index of size {len(self.index)}. Parent Dataset:\n{self.dataset.__repr__()}"
 
 
-def split_dataset(dataset: Dataset, train_ratio: float, shuffle: bool = True) \
+def split_dataset(dataset: Dataset,
+                  split_ratios: Tuple[float, float, float],
+                  shuffle: bool = True) \
         -> Tuple[SubsetDataset, SubsetDataset, SubsetDataset]:
     """
     Tokenizer a dataset into train/test sets.
@@ -128,15 +149,21 @@ def split_dataset(dataset: Dataset, train_ratio: float, shuffle: bool = True) \
     :param shuffle: shuffle dataset before slicing
     :return: (train, valid, test) datasets
     """
-    assert train_ratio < 1 and train_ratio > 0
+    assert sum(split_ratios) == 1
+    assert all([s > 0 and s < 1 for s in split_ratios])
     index = list(range(len(dataset)))
     if shuffle:
         random.shuffle(index)
 
-    n_train = int(train_ratio * len(dataset))
+    # split the dataset index into train/valid/test
+    def discrtz(N, ratio):
+        return int(ratio * N)
+
+    n_train, n_valid, n_test = map(partial(discrtz, len(dataset)), split_ratios)
     train_index = index[:n_train]
-    test_index = index[n_train:]
+    valid_index = index[n_train:-n_test]
+    test_index = index[-n_test:]
 
     return SubsetDataset(dataset, train_index, label="train"), \
-           SubsetDataset(dataset, test_index, label="valid"), \
+           SubsetDataset(dataset, valid_index, label="valid"), \
            SubsetDataset(dataset, test_index, label="test")
