@@ -26,6 +26,11 @@ def get_hash_from_args(args: Dict, exceptions=None):
 
 
 class ChunckTextDataset(Dataset):
+    """
+    A simple text dataset that splits a raw texts into chucks of equal number of tokens.
+    Tokens can represent characters, subwords or words based on the TokenType.
+    Each dataset needs an implementation of the function `read_and_download_data`.
+    """
 
     @property
     def filename(self):
@@ -121,6 +126,7 @@ class ChunckTextDataset(Dataset):
 
 
 class SubsetDataset():
+    """Create a data by indexing a parent dataset with an index"""
 
     def __init__(self, dataset: Dataset, index: List[int], label: str = "subset"):
         self.dataset = dataset
@@ -142,7 +148,7 @@ def split_dataset(dataset: Dataset,
                   shuffle: bool = True) \
         -> Tuple[SubsetDataset, SubsetDataset, SubsetDataset]:
     """
-    Tokenizer a dataset into train/test sets.
+    Split a dataset into train/valid/test splits given the `split_ratios`.
     **warnings** test set = validation set
     :param dataset: dataset to be sliced
     :param train_ratio: ratio of training items

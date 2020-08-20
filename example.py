@@ -14,7 +14,7 @@ args = vars(parser.parse_args())
 
 
 dset = ChunckTextDataset(DatasetType.TEXT8, **args)
-dset_train, dset_valid, dset_test = split_dataset(dset, split_ratios=SPLITS_RATIOS, shuffle=False)
+dset_train, dset_valid, dset_test = split_dataset(dset, split_ratios=TEXT8_SPLITS_RATIOS, shuffle=False)
 
 print(logging_sep("="))
 print(dset)
