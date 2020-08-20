@@ -20,7 +20,7 @@ def read_and_download_text8_data(root: str = 'data/') -> str:
         os.makedirs(directory)
 
     if not os.path.isfile(file_path):
-        print('Downloading text8 dataset...')
+        print(f'Downloading text8 data from `{URL}`')
 
         with urllib.request.urlopen(URL) as response, open(file_path, 'wb') as outfile:
             shutil.copyfileobj(response, outfile)

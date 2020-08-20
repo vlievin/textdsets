@@ -60,7 +60,7 @@ class ChunckTextDataset(Dataset):
             }[dataset_type]
 
             # read the raw text dump
-            print("(Download and) read the data..")
+            print("(Downloading and) reading data..")
             raw_text = read_and_download_data(root=root)
 
             # extract tokens
@@ -72,7 +72,7 @@ class ChunckTextDataset(Dataset):
             self.vocabulary = build_vocabulary_from_tokens(tokens, max=vocabulary_size)
 
             # encode tokens
-            print("Encode tokens..")
+            print("Encoding tokens..")
             encoded_tokens = encode_tokens(tokens, self.vocabulary)
 
             # drop the last split
